@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: my-node-app
+    env: docker
+    plan: free
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    branch: main
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
