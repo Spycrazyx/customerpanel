@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo">HEZUX</div>
+    <a href="/logout" class="logout-btn">Logout</a>
+  </div>
+  
+  <div class="content">
+    
+    <div class="key-form">
+      <h2>Redeem a Key</h2>
+      <p class="form-intro">Enter your license key below to activate your product</p>
+      
+      <% if (typeof error !== 'undefined') { %>
+        <div class="error-message visible" id="errorMessage">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: middle;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <%= error %>
+        </div>
+      <% } %>
+      
+      <% if (typeof success !== 'undefined') { %>
+        <div class="success-message visible" id="successMessage">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: middle;">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <%= success %>
+        </div>
+      <% } %>
+      
+      <form action="/redeem" method="post" id="redeemForm">
+        <div class="form-group">
+          <label for="productSelect">Select Product</label>
+          <select name="product" id="productSelect" required>
+            <option value="" disabled selected>Choose a product...</option>
+            <% products.forEach(p => { %>
+              <option value="<%= p %>" <%= (typeof product !== 'undefined' && product === p) ? 'selected' : '' %>><%= p %></option>
+            <% }) %>
+          </select>
+          <div class="error-message" id="productError">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; vertical-align: middle;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            Please select a product
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="keyInput">License Key</label>
+          <input type="text" name="key" id="keyInput" placeholder="Enter your license key" value="<%= typeof key !== 'undefined' ? key : '' %>" required>
+          <div class="error-message" id="keyError">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; vertical-align: middle;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            Please enter a valid license key
+          </div>
+        </div>
+        
+        <button type="submit" class="btn-primary">
+          <span class="btn-text">Redeem Key</span>
+          <span class="btn-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </span>
+        </button>
+      </form>
+    </div>
+    <script>
+      // Client-side validation
+      document.getElementById('redeemForm').addEventListener('submit', function(e) {
+        let isValid = true;
+        const productSelect = document.getElementById('productSelect');
+        const keyInput = document.getElementById('keyInput');
+        
+        // Reset previous errors
+        document.querySelectorAll('.error-message').forEach(el => el.classList.remove('visible'));
+        document.querySelectorAll('input, select').forEach(el => el.classList.remove('error'));
+        
+        // Validate product
+        if (!productSelect.value) {
+          document.getElementById('productError').classList.add('visible');
+          productSelect.classList.add('error');
+          isValid = false;
+        }
+        
+        // Validate key
+        if (!keyInput.value.trim()) {
+          document.getElementById('keyError').classList.add('visible');
+          keyInput.classList.add('error');
+          isValid = false;
+        }
+        
+        if (!isValid) {
+          e.preventDefault();
+          // Scroll to first error
+          const firstError = document.querySelector('.error-message.visible');
+          if (firstError) {
+            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      });
+      
+      // Auto-hide messages after 5 seconds
+      setTimeout(() => {
+        const messages = document.querySelectorAll('.error-message.visible, .success-message.visible');
+        messages.forEach(msg => {
+          msg.style.opacity = '0';
+          setTimeout(() => msg.remove(), 300);
+        });
+      }, 5000);
+    </script>
+
+  <div class="products-grid">
+    <% 
+    const userSpecificKeys = userKeys.filter(u => u.includes(user.id));
+    const activatedProducts = userSpecificKeys.map(keyData => {
+      const [userId, username, email, key, product] = keyData.split('=');
+      return product;
+    });
+    
+    products.forEach(product => {
+      const isActivated = activatedProducts.includes(product);
+    %>
+      <div class="product-card <%= isActivated ? 'activated' : '' %>">
+        <div class="product-icon">
+          <% if (product.includes('Fortnite')) { %>
+            <img src="/images/fortnite-icon.png" alt="Fortnite">
+          <% } else { %>
+            <img src="/images/spoofer-icon.png" alt="Spoofer">
+          <% } %>
+        </div>
+        <h3><%= product %></h3>
+        <div class="product-status">
+          <% if (isActivated) { %>
+            <span class="status-badge active">Activated</span>
+            <a href="/download/<%= product.toLowerCase().replace(/\s+/g, '-') %>" class="download-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Download
+            </a>
+          <% } else { %>
+            <span class="status-badge inactive">Not Activated</span>
+            <a href="#" class="activate-btn" data-product="<%= product %>">Activate</a>
+          <% } %>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+  
+  <% if (userSpecificKeys.length > 0) { %>
+    <h2>Your Keys</h2>
+    <div class="keys-container">
+      <% userSpecificKeys.forEach(keyData => { 
+        const [userId, username, email, key, product] = keyData.split('=');
+      %>
+        <div class="key-card">
+          <div class="key-header">
+            <span class="key-product"><%= product %></span>
+            <span class="key-status">Active</span>
+          </div>
+          <div class="key-value"><%= key %></div>
+          <div class="key-meta">
+            <span class="key-email"><%= email %></span>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  <% } %>
+  
+  <div class="logout-container">
+    <a href="/logout" class="logout-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
+      Logout
+    </a>
+  </div>
+</div>
+</body>
+</html>
