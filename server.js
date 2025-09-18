@@ -8,7 +8,7 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Session
+// Session setup
 app.use(session({
   secret: process.env.SESSION_SECRET || 'supersecretfallbackkey',
   resave: false,
@@ -16,20 +16,23 @@ app.use(session({
   cookie: { secure: process.env.NODE_ENV === 'production' }
 }));
 
-// EJS & static files
+// EJS & static
 app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
+
+// Determine redirect URI dynamically
+const isProduction = process.env.NODE_ENV === 'production';
+const REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || (isProduction
+  ? 'https://my-node-app-qwwr.onrender.com/auth/discord/callback'
+  : 'http://localhost:3000/auth/discord/callback');
 
 // Root route
 app.get("/", (req, res) => {
   res.send("Server is running!");
 });
 
-// Determine redirect URI dynamically
-const REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || "http://localhost:3000/auth/discord/callback";
-
-// Discord OAuth login route
+// Login route
 app.get("/login", (req, res) => {
   const url = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20email`;
   res.redirect(url);
@@ -45,7 +48,7 @@ app.get("/auth/discord/callback", async (req, res) => {
       client_id: process.env.DISCORD_CLIENT_ID,
       client_secret: process.env.DISCORD_CLIENT_SECRET,
       grant_type: "authorization_code",
-      code: code,
+      code,
       redirect_uri: REDIRECT_URI,
       scope: "identify email"
     }), {
@@ -94,11 +97,10 @@ app.get("/download/:product", (req, res) => {
   };
 
   const displayProductName = productNameMap[product];
-
   const userHasAccess = userKeys.some(key => {
     const parts = key.split('=');
     const userId = parts[0];
-    const productName = parts[4]; // 5th part
+    const productName = parts[4];
     return userId === req.session.user.id && productName === displayProductName;
   });
 
@@ -115,7 +117,6 @@ app.get("/download/:product", (req, res) => {
   if (!fileName) return res.status(404).send("Product not found");
 
   const filePath = path.join(__dirname, 'downloads', fileName);
-
   if (fs.existsSync(filePath)) {
     res.download(filePath, fileName, err => {
       if (err) {
@@ -128,17 +129,15 @@ app.get("/download/:product", (req, res) => {
   }
 });
 
-// Redeem key route
-app.post('/redeem', (req, res) => {
-  if (!req.session.user) return res.redirect('/login');
+// Redeem key
+app.post("/redeem", (req, res) => {
+  if (!req.session.user) return res.redirect("/login");
 
   const { product, key } = req.body;
   const keyToRedeem = key.trim().toUpperCase();
-
   const keyFile = `keys/${product.replace(/\s+/g, ' ').replace(/ /g, '%20')}.txt`;
-  if (!fs.existsSync(keyFile)) {
-    return res.status(400).render('error', { title: 'Invalid Product', message: 'The selected product is invalid or not available.', user: req.session.user });
-  }
+
+  if (!fs.existsSync(keyFile)) return res.status(400).render('error', { title: 'Invalid Product', message: 'Product not found.', user: req.session.user });
 
   const keys = fs.readFileSync(keyFile, 'utf-8').split('\n').map(k => k.trim());
   const userKeys = fs.existsSync('keys/users.txt') ? fs.readFileSync('keys/users.txt', 'utf-8').split('\n') : [];
@@ -171,4 +170,5 @@ app.post('/redeem', (req, res) => {
   });
 });
 
+// Start server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
